@@ -2,7 +2,7 @@ import scipy.stats as stats
 import math
 import numpy as np
 
-
+# ============================================================================
 # FUNCTION - 1  : PRIOR SI DATA
 def get_abPrior(MeanPrior,StdPrior):
     """
@@ -88,6 +88,9 @@ def get_TimeStepSlices(IncidenceSerie,CumulIncThreshold,
             print('{}-{}'.format(startTime[i],endTime[i]))
     
     return startTime,endTime
+# ============================================================================
+
+
 
 # FUNCTION - 4 : DiscreteShifted Gamma SIDistr
 def DiscreteShiftedGammaSIDistr(k, mean, sd):
@@ -217,3 +220,4 @@ def compute_mu_sigma_distribution(SampleSizeSI,SI_mean,SI_stdev,mean_vars,stdev_
         mu.append(mu_cur)
         sigma.append(sigma_cur)
     return mu,sigma
+
