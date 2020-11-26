@@ -106,7 +106,7 @@ def TEST_FinalSIDistributionWithoutUncertainty():
         0.04928027310537493, 0.03768540879359242, 0.028258881607430397,
         0.020839313032990067, 0.015148217455912619]
 
-    MeanSIFinal,sdSIFinal,SIDistr = FinalSIDistributionWithoutUncertainty(8.4,3.8,TEST_INC_LIST.shape[0])
+    intflag,MeanSIFinal,sdSIFinal,SIDistr = FinalSIDistributionWithoutUncertainty(8.4,3.8,TEST_INC_LIST.shape[0])
     if not MeanSIFinal == 8.40000000001321 or not sdSIFinal == 3.8218661059491086 :
         print('TESTERROR on FinalSIDistributionWithoutUncertainty : computation of mean and std does not gives good results')
         print(MeanSIFinal,sdSIFinal)

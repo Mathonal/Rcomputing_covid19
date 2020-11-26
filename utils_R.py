@@ -3,6 +3,139 @@ import math
 import numpy as np
 
 # ============================================================================
+# verif on variables functions
+def check_incidencevalues(IncidenceSerie):
+    checkflag = True
+    for index, value in IncidenceSerie.items():
+        if value < 0 :
+            print("Incidence at time " + str(index) + " is negative. Estimation aborted.")
+            checkflag = False
+    return checkflag
+
+def check_computationframe(ComputationLength,ComputationStep,TimeMaxnb):
+    # verif to get out of function (prior to call)
+    if ComputationLength < 1 :
+        print("You cannot estimate R over a period shorter than the time step of your data. Estimation aborted.")
+        return False
+    if ComputationLength > TimeMaxnb:
+        print("You cannot estimate R over a period longer than the epidemic. Estimation aborted.")
+        return False
+    if ComputationStep < 1 :
+        print("The number of time steps at which estimation is performed must be an integer >=1. Estimation aborted.")
+        return False
+    return True
+
+def check_mainmeanstd(SI_mean,SI_stdev,ComputationStep):
+    checkflag = True
+    if SI_mean < ComputationStep :
+        print("The mean serial interval must be >1 time step of incidence. Estimation aborted.")
+        checkflag = False
+    if SI_stdev < 0 :
+        print("The std of the serial interval must be >=0. Estimation aborted.")
+        checkflag = False
+    return checkflag
+
+def check_priors(MeanPrior,StdPrior):
+    if MeanPrior <= 0 :
+        print("The mean prior must be >0. Estimation aborted.")
+    if StdPrior <= 0 :
+        print("The std of the prior must be >0. Estimation aborted.")
+    return True
+
+def check_threshold(CVThreshold):
+    if CVThreshold <=0 :
+        print(">0 value for Aimed posterior CV needed. Estimation aborted.")
+        return False
+    return True
+
+def check_incertainparams(SI_mean,SI_stdev,mean_vars,stdev_vars,SampleSizeSI):
+    """
+        Full check on UNCERTAINTY DISTRIBUTION PARAMETERS
+        SI_mean,SI_stdev
+        mean_vars = {'std':1,'MAX':12.4,'min':4.4}
+        stdev_vars = {'std':0.5,'MAX':5.8,'min':1.8}
+        SampleSizeSI
+    """
+    checkflag = True
+    if (SI_mean < 1) :
+        print("The mean mean serial interval must be >=1. Estimation aborted.")
+        checkflag = False
+
+    if (mean_vars['std'] <= 0) :
+        print("The standard deviation of the mean serial interval must be >0. Estimation aborted.")
+        checkflag = False
+
+    if (mean_vars['min'] < 1) :
+        print("The minimum mean serial interval must be >=1. Estimation aborted.")
+        checkflag = False
+
+    if (mean_vars['min'] > SI_mean) :
+        print("The minimum mean serial interval must be smaller or equal to the mean. Estimation aborted.")
+        checkflag = False
+
+    if (mean_vars['MAX'] < SI_mean) :
+        print("The maximum mean serial interval must be larger or equal to the mean. Estimation aborted.")
+        checkflag = False
+
+    if (SI_stdev <= 0) :
+        print("The mean std of the serial interval must be >0. Estimation aborted.")
+        checkflag = False
+
+    if (stdev_vars['std'] <= 0) :
+        print("The standard deviation of the std of the serial interval must be >0. Estimation aborted.")
+        checkflag = False
+
+    if (stdev_vars['min'] <= 0) :
+        print("The minimum std of the serial interval must be >0. Estimation aborted.")
+        checkflag = False
+
+    if (stdev_vars['min'] > SI_stdev) :
+        print("The minimum std of the serial interval must be smaller or equal to the mean. Estimation aborted.")
+        checkflag = False
+
+    if (stdev_vars['MAX'] < SI_stdev) :
+        print("The maximum std of the serial interval must be larger or equal to the mean. Estimation aborted.")
+        checkflag = False
+
+    if SampleSizeSI < 0 :
+        print("The No. of SI dsitributions sampled must be >0. Estimation aborted.")
+        checkflag = False
+    #warning
+    if (stdev_vars['MAX'] + stdev_vars['min'] - 2 * SI_stdev > 0.01 * SI_stdev) :
+        print("Warning: the distribution of the std of the SI is not centered around the mean you indicated.")
+    if (mean_vars['MAX'] + mean_vars['min'] - 2 * SI_mean > 0.01 * SI_mean) :
+        print("Warning: the distribution of the mean SI is not centered around the mean you indicated.")
+    return checkflag
+
+def fullcheck_serial(IncidenceSerie,SI_mean,SI_stdev,
+    MeanPrior,StdPrior,CVThreshold,
+    ComputationLength,ComputationStep):
+    TimeMaxnb = IncidenceSerie.shape[0]
+
+    checkflag = True
+    checkflag = check_computationframe(ComputationLength,ComputationStep,TimeMaxnb)
+    checkflag = check_priors(MeanPrior,StdPrior)
+    checkflag = check_threshold(CVThreshold)
+    #SERIAL
+    checkflag = check_mainmeanstd(SI_mean,SI_stdev,ComputationStep)
+    return checkflag
+
+def fullcheck_uncertain(IncidenceSerie,SI_mean,SI_stdev,
+    MeanPrior,StdPrior,CVThreshold,
+    ComputationLength,ComputationStep,
+    mean_vars,stdev_vars,SampleSizeSI):
+    TimeMaxnb = IncidenceSerie.shape[0]
+
+    checkflag = True
+    checkflag = check_computationframe(ComputationLength,ComputationStep,TimeMaxnb)
+    checkflag = check_priors(MeanPrior,StdPrior)
+    checkflag = check_threshold(CVThreshold)
+    #UNCERTAINTY
+    checkflag = check_incertainparams(SI_mean,SI_stdev,mean_vars,stdev_vars,SampleSizeSI)
+    return checkflag
+
+
+# ============================================================================
 # FUNCTION - 1  : PRIOR SI DATA
 def get_abPrior(MeanPrior,StdPrior):
     """
@@ -90,8 +223,6 @@ def get_TimeStepSlices(IncidenceSerie,CumulIncThreshold,
     return startTime,endTime
 # ============================================================================
 
-
-
 # FUNCTION - 4 : DiscreteShifted Gamma SIDistr
 def DiscreteShiftedGammaSIDistr(k, mean, sd):
     '''
@@ -125,12 +256,14 @@ def FinalSIDistributionWithoutUncertainty(SImean,SIstdev,TimeMaxnb):
         WITHOUT uncertainty  : MEAN and STD only.
         TimeMaxnb is the length of the INCIDENCE SERIE
 
-        return : 
+        return :
+        - Flag on basics values and form check of SI ditribution 
         - 2 recomputed values of MEAN and STD
         - a list of SIditribution values from [0; incidenceserie size] for plotting purpose
 
         DEPENDENCIES : DiscreteShiftedGammaSIDistr , math lib
     """
+    checkflag = True
     SumPi = 0
     SumPiXi = 0
     SumPiXi2 = 0
@@ -142,15 +275,25 @@ def FinalSIDistributionWithoutUncertainty(SImean,SIstdev,TimeMaxnb):
         SumPiXi = SumPiXi + i * current_SIDistr
         SumPiXi2 = SumPiXi2 + i * i * current_SIDistr
         SIDistr.append(current_SIDistr)
-        
+        # CHECKS on SIDistr values
+        if current_SIDistr < 0 :
+            print("serial interval distribution at time {} is negative. Estimation aborted.".format(i))
+            checkflag = False
+
     MeanSIFinal = SumPiXi
     sdSIFinal = math.sqrt(SumPiXi2 - SumPiXi * SumPiXi)
     #VERIFICATION if inconsistent data
     if SumPi < 0.99 :
         print("The epidemic is too short compared to the distribution of the SI. Estimation aborted.")
-        return False
-    else :
-        return MeanSIFinal,sdSIFinal,SIDistr
+        checkflag = False
+    if SIDistr[0] > 0 :
+        print("serial interval distribution at time 0 is not null. Model does not account for the possibility that index cases infect individuals on the very day when they are infected. Estimation aborted.")
+        checkflag = False
+    if MeanSIFinal < 1 :
+        print("The parameters you provided lead to a mean discrete serial interval <1 time step of incidence. Estimation aborted.")
+        checkflag = False
+
+    return checkflag,MeanSIFinal,sdSIFinal,SIDistr
 
 # FUNCTION - 6 & 7 : LAMBDA & CALCULATE POSTERIOR
 def LambdaCalc(t, MeanSI, stdSI, Incidence):
